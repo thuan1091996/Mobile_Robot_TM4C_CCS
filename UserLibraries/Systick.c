@@ -21,7 +21,7 @@ static unsigned long Tick=0;
             + Change the interrupt handler by "SystickIntRegister()" function
 */
 void Systick_Init(){
-    SysTickIntRegister(Systick_ISR);    //Define  Systick ISR
+//    SysTickIntRegister(Systick_ISR);    //Define  Systick ISR
     HWREG(NVIC_ST_CTRL)&=~0x07;         //Disable Systick Timer during initialization
     HWREG(NVIC_ST_RELOAD)=80000-1;      //(80 * 1/(80*10^6) = 1us)
     HWREG(NVIC_ST_CURRENT)=0;           //Write any value to clear the counter

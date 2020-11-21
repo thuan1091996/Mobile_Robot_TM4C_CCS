@@ -21,6 +21,7 @@
 #include "UserLibraries/Encoder.h"
 #include "UserLibraries/UART.h"
 #include "UserLibraries/Algorithm.h"
+#include "UserLibraries/os.h"
 //////------------------------------------------------------------------------///////
 
 ////// ----------------3.Global Declarations Section--------------------------///////
@@ -36,6 +37,13 @@ float ki=0.17;
 //Tuning PID
 // kp -  0.45
 // ki -  0.17
+
+#define NUMB_SRF                4
+int32_t i32Data_SRF;                                            //New SRF Data Semaphore
+int32_t i32Mutex_SRF;                                           //Mutex SRF (only read 1 at a time)
+uint32_t SRF_Data[NUMB_SRF]={0};                        //Store the Distances data
+uint8_t  Running_SRF=4;                                         //Current reading SRF
+int32_t Distance_test;
 //////------------------------------------------------------------------------///////
 
 ////// ----------------4. Subroutines Section---------------------------------///////
@@ -48,7 +56,8 @@ void main(void)
 //    QEI_Init();
 //    QEI_VelocityInit();
 //    UART_Init();
-    SRFs_Init();
+//    SRFs_Init();
+    OS_Launch(100);
     IntMasterEnable();                      //Enable Interrupt
     while(1)
     {
@@ -65,7 +74,7 @@ void main(void)
 
 //        Update_Position1(&Pos_Motor1);
 //        Update_Vel1(&Vel_Motor1);
-        temp=SRF_GetDistance(i);
+//        temp=SRF_GetDistance(i);
         Delay_ms(10);
     };
 }

@@ -30,6 +30,7 @@
 //
 //*****************************************************************************
 void ResetISR(void);
+void SysTick_Handler(void);
 static void NmiSR(void);
 static void FaultISR(void);
 static void IntDefaultHandler(void);
@@ -82,7 +83,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // Debug monitor handler
     0,                                      // Reserved
     IntDefaultHandler,                      // The PendSV handler
-    IntDefaultHandler,                      // The SysTick handler
+    SysTick_Handler,                        // The SysTick handler
     IntDefaultHandler,                      // GPIO Port A
     IntDefaultHandler,                      // GPIO Port B
     IntDefaultHandler,                      // GPIO Port C
@@ -244,6 +245,20 @@ ResetISR(void)
     __asm("    .global _c_int00\n"
           "    b.w     _c_int00");
 }
+
+
+void
+SysTick_Handler(void)
+{
+    //
+    // Jump to the CCS C initialization routine.  This will enable the
+    // floating-point unit as well, so that does not need to be done here.
+    //
+//    __asm("    .global _c_int00\n"
+//          "    b.w     _c_int00");
+}
+
+
 
 //*****************************************************************************
 //

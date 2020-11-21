@@ -4,7 +4,7 @@
 // This library is used read data from multiple HC-SRF Sensors
 // Created on: Dec, 29 2019
 // Author : TRAN MINH THUAN
-// Driver associate with TM4C123, CCS version 9.x
+// Driver associate with TM4C123, Keil 5
 // HC - SR Sensors
 //                |  Trigger |  Echo
 //         -------+----------+--------
@@ -16,6 +16,24 @@
 //******************************************************************************
 #include "Userlibs.h"
 #include "HC_SRF.h"
+#include "os.h"
+
+// *****************************************************************************
+//
+//---------------------------- 1.Global variables ------------------------------
+//
+// *****************************************************************************
+
+extern int32_t  i32Data_SRF;                         //New SRF data semaphore
+extern int32_t  i32Mutex_SRF;                    //Mutex SRF semaphore (only read 1 at a time)
+extern uint8_t  Running_SRF;                         //Current reading SRF
+extern uint32_t SRF_Data[NUMB_SRF];          //Data SRF
+
+// *****************************************************************************
+//
+//--------------------------- 2.Static variables  ------------------------------
+//
+// *****************************************************************************
 struct SRF
 {
    uint32_t Trigger_Port;
@@ -24,21 +42,22 @@ struct SRF
    uint32_t Echo_Pin;
    uint32_t Int_Flag;
 };
-typedef struct 	SRF SRF_Type;
-SRF_Type    		SRFs[NUMB_SRF];
-extern int32_t 	i32Data_SRF;
-extern uint8_t 	Running_SRF;
-extern uint32_t SRF_Data[NUMB_SRF];
-
-static uint32_t	Pulse_Width;
+typedef struct  SRF SRF_Type;
+SRF_Type            SRFs[NUMB_SRF];
+static uint32_t Pulse_Width;
 static double   temp = 1.0/80.0;
-uint8_t Echo_wait=0;
-uint8_t Newdata=0;
+
+// *****************************************************************************
+//
+//-------------------------- 3. Function definition  ---------------------------
+//
+// *****************************************************************************
+
 
 // *****************************************************************************
 //
 //! Initialize a SRF module.
-//!  void    SRF_Init(  uint32_t ui32SRF_TriggerPort,
+//! void    SRF_Init(  uint32_t ui32SRF_TriggerPort,
 //!                     uint32_t ui32SRF_TriggerPin,
 //!                     uint32_t ui32SRF_EchoPort,
 //!                     uint32_t ui32SRF_EchoPin)
@@ -66,16 +85,17 @@ void SRF_Init(uint32_t ui32SRF_TriggerPort,
 // *****************************************************************************
 //
 //! Initialize SRF modules.
-//! void SRF_Init(void)
+//! void SRFs_Init(uint8_t ui8Priority)
+//! \param:  ui8Priority -  Priority of SRF GPIO interrupt handler
 //! This function is used to initialize the SRF modules
 //! Assign interrupt handler for SRF Echo pins
 //! Setup a timer to calculate the distance
 //
 //******************************************************************************
-void SRFs_Init(void)
+void SRFs_Init(uint8_t ui8Priority)
 {
-    // Assign value to the SRFs
     uint8_t count;
+    // Assign value to the SRFs
     SRFs[0].Trigger_Port=TRIGGER0_PORT;
     SRFs[1].Trigger_Port=TRIGGER1_PORT;
     SRFs[2].Trigger_Port=TRIGGER2_PORT;
@@ -100,11 +120,11 @@ void SRFs_Init(void)
     SRFs[3].Echo_Pin=ECHO3_PIN;
     SRFs[4].Echo_Pin=ECHO4_PIN;
 
-	SRFs[0].Int_Flag=SRF0_INTFLAG;
-	SRFs[1].Int_Flag=SRF1_INTFLAG;
-	SRFs[2].Int_Flag=SRF2_INTFLAG;
-	SRFs[3].Int_Flag=SRF3_INTFLAG;
-	SRFs[4].Int_Flag=SRF4_INTFLAG;
+    SRFs[0].Int_Flag=SRF0_INTFLAG;
+    SRFs[1].Int_Flag=SRF1_INTFLAG;
+    SRFs[2].Int_Flag=SRF2_INTFLAG;
+    SRFs[3].Int_Flag=SRF3_INTFLAG;
+    SRFs[4].Int_Flag=SRF4_INTFLAG;
 
     // Initialize for the GPIOs
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
@@ -113,16 +133,15 @@ void SRFs_Init(void)
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOB));
     for(count=0;count<NUMB_SRF;count++)
     {
-        SRF_Init(SRFs[count].Trigger_Port,										//Init the GPIO for SRF pins
+        SRF_Init(SRFs[count].Trigger_Port,                                                                          //Init the GPIO for SRF pins
                  SRFs[count].Trigger_Pin,
                  SRFs[count].Echo_Port,
                  SRFs[count].Echo_Pin);
-        GPIOPinWrite(SRFs[count].Trigger_Port, SRFs[count].Trigger_Pin, 0);	    //Assign 0 as default value of trigger pins
+        GPIOPinWrite(SRFs[count].Trigger_Port, SRFs[count].Trigger_Pin, 0);     //Assign 0 as default value of trigger pins
     }
     //Assign Interrupt handler for Echo pins
     GPIOIntRegister(ECHO_PORT,SRF_Handler);
-    IntPrioritySet(INT_GPIOA_TM4C123, 3);                                       //Set 3<-Priority of all echo pins (PortA)
-
+    IntPrioritySet(INT_GPIOA_TM4C123, ui8Priority);                                       //Set 3<-Priority of all echo pins (PortA)
     //Timer periodic up full width (32-bit)
     SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
     while(!SysCtlPeripheralReady(SYSCTL_PERIPH_TIMER2));
@@ -132,66 +151,58 @@ void SRFs_Init(void)
 
 // *****************************************************************************
 //
-//! Get distances data from SRF
-//! uint32_t  SRF_GetDistance(void);
-//! This function is used to initialize the SRF modules
-//! Assign interrupt handler for SRF Echo pins
-//! Setup a timer to calculate the distance
+//! Get distance data from SRF
+//! void  SRF_GetDistance(void);
+//! This function is used get distance from a SRF sensor at a time
+//! Using semaphore to prevent concurrent reading SRF and waiting for the interrupt
 //
 //******************************************************************************
-uint32_t  SRF_GetDistance(uint8_t ui8SRF)
+void  SRF_GetDistance(uint8_t ui8SRF)
 {
-		uint32_t distance=0;
-		if(Echo_wait==0)                //If not waiting for any SRF
-		{
-            GPIOIntEnable(SRFs[ui8SRF].Echo_Port, SRFs[ui8SRF].Int_Flag);
-            SysCtlDelay(266);           //9.975us, very fast
-            Running_SRF=ui8SRF;         //Pass this to SRF_Handler
-            GPIOPinWrite(SRFs[ui8SRF].Trigger_Port,SRFs[ui8SRF].Trigger_Pin,SRFs[ui8SRF].Trigger_Pin);
-            SysCtlDelay(266);   		//9.975us, very fast
-            GPIOPinWrite(SRFs[ui8SRF].Trigger_Port, SRFs[ui8SRF].Trigger_Pin, 0);
-            SysCtlDelay(1064000);       //40ms very fast
-
-//            while(Echo_wait==1);
-            if(Newdata==1)
-            {
-                if(Pulse_Width<1000000) //filter
-                {
-                    distance= (uint32_t) (temp*Pulse_Width);
-                    distance/=58;
-                    Newdata=0;
-                    SRF_Data[Running_SRF]=distance;
-                    return distance;
-                }
-            }
-		}
-		return distance;
+        uint32_t distance=0;
+        OS_Wait(&i32Mutex_SRF);
+        GPIOIntEnable(SRFs[ui8SRF].Echo_Port, SRFs[ui8SRF].Int_Flag);
+        SysCtlDelay(133);       //5us
+        Running_SRF=ui8SRF;     //Pass this to SRF_Handler
+        GPIOPinWrite(SRFs[ui8SRF].Trigger_Port,SRFs[ui8SRF].Trigger_Pin,SRFs[ui8SRF].Trigger_Pin);
+        SysCtlDelay(266);           //9.975us, very fast
+        GPIOPinWrite(SRFs[ui8SRF].Trigger_Port, SRFs[ui8SRF].Trigger_Pin, 0);
+        OS_Sleep(30);               //30ms very fast
+        OS_Wait(&i32Data_SRF);
+        if(Pulse_Width<1000000) //filter
+        {
+                distance= (uint32_t) (temp*Pulse_Width);
+                distance/=58;
+                SRF_Data[ui8SRF]=distance;
+        }
+        OS_Signal(&i32Mutex_SRF);
 }
 
+// *****************************************************************************
+//
+//! SRF Echo Pins GPIO interrupt handler
+//! If detect rising edge -> Reset and enable timer
+//! If detect falling edge -> Get timer value and disable timer
+//
+//******************************************************************************
 void SRF_Handler(void)
 {
-		//
-		//	Acknowledge the interrupt
-		//
-        static uint8_t valid=0;
-        uint8_t echo_input=GPIOPinRead(SRFs[Running_SRF].Echo_Port, SRFs[Running_SRF].Echo_Pin);
-        PORTA_IC_R|=0x7C;           //Clear all echo pins interrupt requests
-//        GPIOIntClear(ECHO_PORT, SRFs[Running_SRF].Int_Flag);
-	    if( echo_input == SRFs[Running_SRF].Echo_Pin)
-        {
-	        TIMER_VALUE=0;                             														      //Reset timer
-            TimerEnable(TIMER2_BASE, TIMER_A);
-            Echo_wait=1;
-            valid=1;
-	    }
-	    if( (echo_input != SRFs[Running_SRF].Echo_Pin) && (valid==1) )
-	    {
-            Pulse_Width=TIMER_VALUE;
-            TimerDisable(TIMER2_BASE, TIMER_A);
-            Newdata=1;
-            Echo_wait=0;
-            valid=0;
-            GPIOIntDisable(SRFs[Running_SRF].Echo_Port, SRFs[Running_SRF].Int_Flag);
-	    }
+    static uint8_t valid=0;
+    uint8_t echo_input=GPIOPinRead(SRFs[Running_SRF].Echo_Port, SRFs[Running_SRF].Echo_Pin);
+    PORTA_IC_R|=0x7C;                                                                                   //Clear all echo pins interrupt requests
+    if( echo_input == SRFs[Running_SRF].Echo_Pin)                                       //Rising edge in Echo pin
+    {
+                TIMER_VALUE=0;                                                          //Reset timer
+                TimerEnable(TIMER2_BASE, TIMER_A);                                              //Enable Timer
+                valid=1;                                                                                                    //Confirm that detect Rising edge already
+    }
+    if( (echo_input != SRFs[Running_SRF].Echo_Pin) && (valid==1) )  //Falling edge with rising edge detected
+    {
+                Pulse_Width=TIMER_VALUE;                                                                    //Get timer value to calculate distance
+                TimerDisable(TIMER2_BASE, TIMER_A);                                             //Disable timer
+                valid=0;                                                                                                    //Clear valid flag
+                GPIOIntDisable(SRFs[Running_SRF].Echo_Port, SRFs[Running_SRF].Int_Flag);
+                OS_Signal(&i32Data_SRF);                                                                    //Complete collect a distance data
+    }
 }
 
