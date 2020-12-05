@@ -8,7 +8,7 @@
 #include "Userlibs.h"
 #include "Systick.h"
 
-static unsigned long Tick=0;
+unsigned long Tick=0;
 
 /* SYSTICK Initialization
  * Function:- Initialization for Systick timer then load 80000  ->(80000 * 1/(80*10^6) = 1ms)

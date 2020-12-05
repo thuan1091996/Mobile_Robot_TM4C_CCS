@@ -246,16 +246,17 @@ ResetISR(void)
           "    b.w     _c_int00");
 }
 
-
+extern unsigned long Tick;
 void
 SysTick_Handler(void)
 {
-    //
-    // Jump to the CCS C initialization routine.  This will enable the
-    // floating-point unit as well, so that does not need to be done here.
-    //
-//    __asm("    .global _c_int00\n"
-//          "    b.w     _c_int00");
+    /* SYSTICK Overflow Interrupt Handler
+     * The SYSTICK timer automatically load value from RELOAD_R so there no need to update new value
+     * Interrupt after each 1ms
+     * Input:  No
+     * Output: No
+     */
+    Tick++;                                         //Increase every 1 us corresponding to Reload value
 }
 
 
