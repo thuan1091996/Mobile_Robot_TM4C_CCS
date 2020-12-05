@@ -1,14 +1,35 @@
-/*
- * Double_H_Bridges.c
- *
- *  Created on: Jul 8, 2019
- *      Author: Itachi
- */
+/****************************************************************************
+* Title                 :   Double Bridge H Driver
+* ProductLink           :   banlinhkien.vn/goods-9856-mach-cau-h-7a-dc6-5-27v-mc-7a6527.html
+* Filename              :   BridgeH.c
+* Author                :   ItachiThuan
+* Origin Date           :   Jul 8, 2019
+* Version               :   1.0.1
+* Target                :   TM4C123
+* Notes                 :
+  ENA     |  ENB     |  IN1    |  IN2   |  IN3   |  IN4
+----------+----------+-------- +--------+--------+------
+  PE4     |  PE5     |  PE0    |  PE1   |  PE2   |  PB1
+*****************************************************************************/
 
+/******************************************************************************
+* Includes
+*******************************************************************************/
 #include "Userlibs.h"
 #include "BridgeH.h"
 
 
+/******************************************************************************
+* Module Typedefs
+*******************************************************************************/
+
+/******************************************************************************
+* Module Variable Definitions
+*******************************************************************************/
+
+/******************************************************************************
+* Function Definitions
+*******************************************************************************/
 
 /* -----------BridgeH_GPIO_Init---------------
  * GPIO Initialization for Bridge-H to control motors's direction (IN1 -> IN4 Pins)
@@ -22,6 +43,8 @@ void BridgeH_GPIO_Init(void)
     while(!SysCtlPeripheralReady(BRIDGEH_GPIO_PERIPH));
     GPIOPinTypeGPIOOutput(BRIDGEH_GPIO_PORT,IN1_PIN| IN2_PIN| IN3_PIN| IN4_PIN);
     GPIOPadConfigSet(BRIDGEH_GPIO_PORT, IN1_PIN|IN2_PIN|IN3_PIN|IN4_PIN, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD); //Setup pins output 8mA is a MUST
+    Motor1_Stop();
+    Motor2_Stop();
 }
 
 /* -----------BridgeH_PWM_Init---------------
@@ -100,62 +123,61 @@ void Update_Speed(int8_t i8_M1Duty, int8_t i8_M2Duty)
 void Motor1_Forward(void)
 {
     uint8_t temp=0;
-    temp=DATA_PE_R;
+    temp=BRIDGEH_GPIO_DATA;
     temp&= MOTOR1;                              //Get the current direction of Motor1
     if(temp!=MOTOR1_FORWARD)                    //If it is not running forward then turn off the motor to protect then running forward
     {
-        DATA_PE_R&=~MOTOR1;                     //Stop motor
+        BRIDGEH_GPIO_DATA&=~MOTOR1;                     //Stop motor
         SysCtlDelay(SysCtlClockGet()/3000);     //Delay 1ms
-        DATA_PE_R|=MOTOR1_FORWARD;              //Run forward
+        BRIDGEH_GPIO_DATA|=MOTOR1_FORWARD;              //Run forward
     }
 }
 
 void Motor1_Backward(void)
 {
     uint8_t temp=0;
-    temp=DATA_PE_R;
+    temp=BRIDGEH_GPIO_DATA;
     temp&= MOTOR1;                              //Get the current direction of Motor1
     if(temp!=MOTOR1_BACKWARD)                   //If it is not running backward then turn off the motor to protect then running backward
     {
-        DATA_PE_R&=~MOTOR1;                     //Stop the motor
+        BRIDGEH_GPIO_DATA&=~MOTOR1;                     //Stop the motor
         SysCtlDelay(SysCtlClockGet()/3000);     //Delay 1ms
-        DATA_PE_R|=MOTOR1_BACKWARD;             //Run backward
+        BRIDGEH_GPIO_DATA|=MOTOR1_BACKWARD;             //Run backward
     }
 }
 
 void Motor1_Stop(void)
 {
-    DATA_PE_R&=~MOTOR1;
+    BRIDGEH_GPIO_DATA&=~MOTOR1;
 }
 
 void Motor2_Forward(void)
 {
     uint8_t     temp=0;
-    temp=DATA_PE_R;
+    temp=BRIDGEH_GPIO_DATA;
     temp&= MOTOR2;                              //Get the current direction of Motor2
     if(temp!=MOTOR2_FORWARD)                    //If it is not running forward then turn off the motor to protect then running forward
     {
-        DATA_PE_R&=~MOTOR2;                     //Stop the motor
+        BRIDGEH_GPIO_DATA&=~MOTOR2;                     //Stop the motor
         SysCtlDelay(SysCtlClockGet()/3000);     //Delay 1ms
-        DATA_PE_R|=MOTOR2_FORWARD;              //Run Forward
+        BRIDGEH_GPIO_DATA|=MOTOR2_FORWARD;              //Run Forward
     }
 }
 
 void Motor2_Backward(void)
 {
     uint8_t     temp=0;
-    temp=DATA_PE_R;
+    temp=BRIDGEH_GPIO_DATA;
     temp&= MOTOR2;                              //Get the current direction of Motor2
     if(temp!=MOTOR2_BACKWARD)                   //If it is not running backward then turn off the motor to protect then running backward
     {
-        DATA_PE_R&=~MOTOR2;                     //Stop the motor
+        BRIDGEH_GPIO_DATA&=~MOTOR2;                     //Stop the motor
         SysCtlDelay(SysCtlClockGet()/3000);     //Delay 1ms
-        DATA_PE_R|=MOTOR2_BACKWARD;             //Run backward
+        BRIDGEH_GPIO_DATA|=MOTOR2_BACKWARD;             //Run backward
     }
 }
 
 void Motor2_Stop(void)
 {
-    DATA_PE_R&=~MOTOR2;
+    BRIDGEH_GPIO_DATA&=~MOTOR2;
 }
-
