@@ -20,7 +20,7 @@
             + Change the Load value to create different time delay interval
             + Change the interrupt handler by "SystickIntRegister()" function
 */
-void Systick_Init();
+void Systick_Init(void);
 
 /* SYSTICK Overflow Interrupt Handler
  * The SYSTICK timer automatically load value from RELOAD_R so there no need to update new value
@@ -28,7 +28,7 @@ void Systick_Init();
  * Input:  No
  * Output: No
 */
-void Systick_ISR();
+void Systick_ISR(void);
 
 /* Delay_ms second by SYSTICK
  * Function: Delay milliseconds corresponding to "milliseconds"

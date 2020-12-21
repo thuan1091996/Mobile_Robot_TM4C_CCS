@@ -5,7 +5,7 @@
 * Author                :   ItachiThuan
 * Origin Date           :   Jul 8, 2019
 * Version               :   1.0.1
-* Target                :   TM4C123
+* Target                :   TM4C123 with CCS IDE
 * Notes                 :
   ENA     |  ENB     |  IN1    |  IN2   |  IN3   |  IN4
 ----------+----------+-------- +--------+--------+------
@@ -16,7 +16,6 @@
 *    Date           + Software Version  +  Initials Description
 *  Jul 8th, 2019      | v1.0.0            |  Interface Created.
 *  Dec 5th, 2020      | v1.0.1            |  Change hardware pin to re-start the project
-*
 *****************************************************************************/
 /** \BridgeH.h
  *  \brief: Contains API to drive 2 motors via bridge H 7A
@@ -44,16 +43,19 @@
 
 #define ENA_PIN                         GPIO_PIN_4
 #define ENB_PIN                         GPIO_PIN_5
+
 #define GPIO_ENACONFIG                  GPIO_PE4_M0PWM4
 #define GPIO_ENBCONFIG                  GPIO_PE5_M0PWM5
 
+#define MOTOR0_FORWARD                  IN3_PIN
+#define MOTOR0_BACKWARD                 IN4_PIN
 #define MOTOR1_FORWARD                  IN1_PIN
 #define MOTOR1_BACKWARD                 IN2_PIN
-#define MOTOR2_FORWARD                  IN3_PIN
-#define MOTOR2_BACKWARD                 IN4_PIN
 
+#define MOTOR0                          (IN3_PIN|IN4_PIN)
 #define MOTOR1                          (IN1_PIN|IN2_PIN)
-#define MOTOR2                          (IN3_PIN|IN4_PIN)
+
+
 
 /******************************************************************************
 * Configuration Constants
@@ -67,16 +69,27 @@
 *******************************************************************************/
 void BridgeH_GPIO_Init(void);
 void BridgeH_PWM_Init(void);
-void Update_Speed(int8_t i8_M1Duty, int8_t i8_M2Duty);
+
+void Motor0_UpdateSpeed(int8_t i8_M0Duty);
+void Motor0_Forward(void);
+void Motor0_Backward(void);
+void Motor0_Stop(void);
+
+
+void Motor1_UpdateSpeed(int8_t i8_M1Duty);
 void Motor1_Forward(void);
 void Motor1_Backward(void);
 void Motor1_Stop(void);
+
+void Motor2_UpdateSpeed(int8_t i8_M2Duty);
 void Motor2_Forward(void);
 void Motor2_Backward(void);
 void Motor2_Stop(void);
+
 void Motor3_Forward(void);
 void Motor3_Backward(void);
 void Motor3_Stop(void);
+
 void Motor4_Forward(void);
 void Motor4_Backward(void);
 void Motor4_Stop(void);
